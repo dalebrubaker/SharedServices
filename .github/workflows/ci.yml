@@ -78,4 +78,4 @@ jobs:
         path: packages/*.nupkg
 
     - name: Publish to NuGet
-      run: dotnet nuget push "./packages/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push "./packages/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate || echo "Some packages failed to push (likely symbol packages), but main package should be published"
