@@ -5,10 +5,15 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  release:
+    types: [ published ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
@@ -30,7 +35,8 @@ jobs:
     - name: Test
       run: dotnet test SharedServices.Tests/SharedServicesTests.csproj --configuration Debug --verbosity normal --collect:"XPlat Code Coverage" --logger trx --results-directory "TestResults"
 
-    - name: Upload coverage to Codecov
+    - name: Upload coverage to Codecov (Ubuntu only)
+      if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v4
       with:
         files: '**/TestResults/**/coverage.cobertura.xml'
@@ -38,8 +44,8 @@ jobs:
 
   package:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    needs: build
+    if: github.event_name == 'release'
+    needs: test
 
     steps:
     - uses: actions/checkout@v4
@@ -49,17 +55,28 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
+    - name: Clear NuGet cache
+      run: dotnet nuget locals all --clear
+
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore --verbosity normal
 
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --configuration Release --no-restore --verbosity normal
+
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --output ./packages
+      run: dotnet pack --configuration Release --no-build --output ./packages -p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nuget-packages
         path: packages/*.nupkg
+
+    - name: Publish to NuGet
+      run: dotnet nuget push packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      if: github.event_name == 'release'
