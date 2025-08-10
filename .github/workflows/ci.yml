@@ -18,14 +18,17 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
+    - name: Clear NuGet cache
+      run: dotnet nuget locals all --clear
+
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore --verbosity normal
 
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --verbosity normal
 
     - name: Test
-      run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage"
+      run: dotnet test SharedServices.Tests/SharedServicesTests.csproj --configuration Debug --verbosity normal --collect:"XPlat Code Coverage" --logger trx --results-directory "TestResults"
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
