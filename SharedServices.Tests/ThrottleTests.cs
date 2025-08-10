@@ -15,7 +15,7 @@ internal class IdDateTime
 
     public override string ToString()
     {
-        return $"{Id}"; // {Timestamp.ToTimestampStringSortsWithTicks()}";
+        return $"{Id}"; 
     }
 }
 
